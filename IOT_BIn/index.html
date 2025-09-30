@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Smart Bin Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="notification-panel" id="notification-panel">
+        <!-- Notifications will be added here dynamically -->
+    </div>
+
+    <div class="container">
+        <header>
+            <i class="fas fa-trash-alt" style="font-size: 2.5rem;"></i>
+            <div>
+                <h1>IoT Smart Bin Monitor</h1>
+                <p class="subtitle">Real-time waste management dashboard</p>
+            </div>
+        </header>
+
+        <div class="section-title">
+            <i class="fas fa-weight"></i>
+            <span>Current Status</span>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-weight-hanging"></i> Current Weight
+                </h2>
+                <div class="weight-display" id="current-weight">0.0 kg</div>
+                <div class="gauge-container">
+                    <div class="gauge">
+                        <div class="gauge-fill" id="weight-gauge"></div>
+                    </div>
+                    <div class="gauge-labels">
+                        <span>0%</span>
+                        <span id="fill-percentage">0%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+                <div class="threshold" id="threshold-alert">
+                    <i class="fas fa-exclamation-triangle"></i> Bin is full! Please empty it.
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="capacity">50 kg</div>
+                        <div class="stat-label">Total Capacity</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="fill-percent">0%</div>
+                        <div class="stat-label">Fill Percentage</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-chart-pie"></i> Statistics
+                </h2>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="cumulative-weight">0.0 kg</div>
+                        <div class="stat-label">Cumulative Weight</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="daily-avg">0.0 kg</div>
+                        <div class="stat-label">Daily Average</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="items-added">0</div>
+                        <div class="stat-label">Items Added</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="last-added">0.0 kg</div>
+                        <div class="stat-label">Last Item Weight</div>
+                    </div>
+                </div>
+                <div class="connection-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="connection-status">Disconnected</span>
+                </div>
+                <div class="controls">
+                    <button id="reset-btn">
+                        <i class="fas fa-sync-alt"></i> Reset Stats
+                    </button>
+                    <button id="view-data-btn">
+                        <i class="fas fa-database"></i> View Data
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-info-circle"></i> System Status
+                </h2>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="update-count">0</div>
+                        <div class="stat-label">Updates Received</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="alert-count">0</div>
+                        <div class="stat-label">Alerts Triggered</div>
+                    </div>
+                </div>
+                <div class="weight-display" id="last-updated">Never</div>
+                <div class="threshold">
+                    <i class="fas fa-broadcast-tower"></i> MQTT Topic: scale/weight
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <i class="fas fa-calendar-week"></i>
+            <span>Weekly Weight Summary</span>
+        </div>
+
+        <div class="dashboard">
+            <div class="card" style="grid-column: 1 / -1;">
+                <h2 class="card-title">
+                    <i class="fas fa-table"></i> Weight by Day
+                </h2>
+                <div class="day-navigation" id="day-navigation">
+                    <!-- Day buttons will be added here -->
+                </div>
+                <div class="day-detail" id="day-detail">
+                    <h3 id="selected-day">Select a day to view details</h3>
+                    <div class="day-stats">
+                        <div class="day-stat">
+                            <div class="day-stat-value" id="day-max">0.0 kg</div>
+                            <div class="day-stat-label">Max Weight</div>
+                        </div>
+                        <div class="day-stat">
+                            <div class="day-stat-value" id="day-avg">0.0 kg</div>
+                            <div class="day-stat-label">Average</div>
+                        </div>
+                        <div class="day-stat">
+                            <div class="day-stat-value" id="day-updates">0</div>
+                            <div class="stat-label">Updates</div>
+                        </div>
+                        <div class="day-stat">
+                            <div class="day-stat-value" id="day-last">0.0 kg</div>
+                            <div class="stat-label">Last Weight</div>
+                        </div>
+                    </div>
+                </div>
+                <table class="weekly-table" id="weekly-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Last Weight</th>
+                            <th>Avg Weight</th>
+                            <th>Max Weight</th>
+                            <th>Updates</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weekly-table-body">
+                        <!-- Table rows will be added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <i class="fas fa-chart-line"></i>
+            <span>Weight History</span>
+        </div>
+
+        <div class="dashboard">
+            <div class="card history-card">
+                <h2 class="card-title">
+                    <i class="fas fa-history"></i> Weight History (Last 24 Hours)
+                </h2>
+                <div class="chart-container">
+                    <canvas id="weight-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>IoT Smart Bin Monitoring System &copy; 2023 | Connected to MQTT Broker</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
